@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
 
-          artifact="${DIST_BASENAME}.tar.gz"
+          artifact="${ARTIFACT_BASENAME}.tar.gz"
 
           lib_file="$(ls build/libsp1verifier.* | head -n 1 || true)"
           if [[ -z "${lib_file}" ]]; then
