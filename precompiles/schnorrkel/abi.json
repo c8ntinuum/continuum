@@ -1,0 +1,36 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "signingCtx",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "msg",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "pubKey",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+            }
+        ],
+        "name": "verifySchnorrkelSignature",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    }
+]

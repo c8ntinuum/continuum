@@ -1,0 +1,31 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "bytes",
+                "name": "ed25519Address",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "message",
+                "type": "bytes"
+            }
+        ],
+        "name": "verifyEd25519Signature",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    }
+]

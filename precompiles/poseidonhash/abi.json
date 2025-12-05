@@ -1,0 +1,21 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "uint256[3]",
+                "name": "inputs",
+                "type": "uint256[3]"
+            }
+        ],
+        "name": "poseidonHash",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "hash",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    }
+]

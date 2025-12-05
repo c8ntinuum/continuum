@@ -1,0 +1,22 @@
+[workspace]
+[package]
+name = "sp1verifier"
+description = "Verifier for SP1 Groth16 and Plonk proofs."
+version = "0.1.5"
+edition = "2021"
+
+[lib]
+name = "sp1verifier"
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2.177"
+
+hex = "0.4.3"
+sha2 = "0.10.9"
+
+sp1-zkvm = "5.2.2"
+sp1-verifier = "5.2.2"
+
+[features]
+blake3 = ["sp1-zkvm/blake3"]

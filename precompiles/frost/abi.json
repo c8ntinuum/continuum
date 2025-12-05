@@ -1,0 +1,90 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "uint8",
+                "name": "ciphersuite",
+                "type": "uint8"
+            },
+            {
+                "internalType": "bytes",
+                "name": "message",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "verificationKey",
+                "type": "bytes"
+            }
+        ],
+        "name": "frostVerifySignature",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "ok",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint8",
+                "name": "ciphersuite",
+                "type": "uint8"
+            },
+            {
+                "internalType": "uint16",
+                "name": "threshold",
+                "type": "uint16"
+            },
+            {
+                "internalType": "uint16",
+                "name": "maxSigners",
+                "type": "uint16"
+            },
+            {
+                "internalType": "bytes",
+                "name": "verificationKey",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes[]",
+                "name": "publicKeyShares",
+                "type": "bytes[]"
+            },
+            {
+                "internalType": "bytes",
+                "name": "commitments",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "message",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signatureShare",
+                "type": "bytes"
+            }
+        ],
+        "name": "frostVerifySignatureShare",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "ok",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    }
+]
