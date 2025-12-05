@@ -10,10 +10,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
-# Start from zero permissions; grant only what each job needs.
-permissions: {}
+permissions:
+  contents: read
 
 defaults:
   run:
@@ -24,19 +24,26 @@ jobs:
     name: Build ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 90
+
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: linux
-            arch: amd64
+          - name: linux-amd64
             runs-on: ubuntu-24.04
-          - os: linux
-            arch: arm64
+            os: linux
+            arch: amd64
+            lib_ext: so
+          - name: linux-arm64
             runs-on: ubuntu-24.04-arm
-          - os: macos
+            os: linux
             arch: arm64
+            lib_ext: so
+          - name: macos-arm64
             runs-on: macos-14
+            os: darwin
+            arch: arm64
+            lib_ext: dylib
 
     permissions:
       contents: read
@@ -44,7 +51,8 @@ jobs:
       attestations: write
 
     env:
-      CTM_BINARY: ctmd
+      ROCKSDB_ENABLED: "true"
+      LEDGER_ENABLED: "true"
       CARGO_TERM_COLOR: always
       GO111MODULE: on
       ROCKSDB_VERSION: "10.2.1"
@@ -62,19 +70,20 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Set version + artifact name
+      - name: Compute build metadata
+        id: meta
         run: |
           set -euo pipefail
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            version="${GITHUB_REF#refs/tags/}"
-            version="${version#v}"
+            raw_tag="${GITHUB_REF#refs/tags/}"
+            version="${raw_tag#v}"
           else
-            version="${GITHUB_SHA:0:7}"
+            version="$(git describe --tags --always | sed 's/^v//')"
           fi
 
-          printf "VERSION=%s\n" "$version" >> "$GITHUB_ENV"
-          printf "DIST_BASENAME=ctmd_%s_%s_%s\n" "$version" "${{ matrix.os }}" "${{ matrix.arch }}" >> "$GITHUB_ENV"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "ARTIFACT_BASENAME=ctmd-${version}-${{ matrix.os }}-${{ matrix.arch }}" >> "$GITHUB_ENV"
 
       - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
@@ -157,12 +166,41 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -euo pipefail
+          brew update
           brew install rocksdb zstd snappy lz4 bzip2 zlib
+          ROCKSDB_PREFIX="$(brew --prefix rocksdb)"
+          BZ2_PREFIX="$(brew --prefix bzip2)"
+          ZLIB_PREFIX="$(brew --prefix zlib)"
+
+          # Sanity check: header must exist
+          ls -R "${ROCKSDB_PREFIX}"
+          test -f "${ROCKSDB_PREFIX}/include/rocksdb/c.h"
+
+          echo "ROCKSDB_PREFIX=${ROCKSDB_PREFIX}" >> "$GITHUB_ENV"
+
+          # Make sure cgo sees 'rocksdb/c.h' and keg-only includes
+          echo "CGO_CFLAGS=-I${ROCKSDB_PREFIX}/include -I${BZ2_PREFIX}/include -I${ZLIB_PREFIX}/include" >> "$GITHUB_ENV"
+
+          # And the linker sees the libs
+          echo "CGO_LDFLAGS=-L${ROCKSDB_PREFIX}/lib -L${BZ2_PREFIX}/lib -L${ZLIB_PREFIX}/lib" >> "$GITHUB_ENV"
+
+          # Help pkg-config find keg-only zlib if any C deps use it
+          if [ -n "${PKG_CONFIG_PATH:-}" ]; then
+            echo "PKG_CONFIG_PATH=${ZLIB_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          else
+            echo "PKG_CONFIG_PATH=${ZLIB_PREFIX}/lib/pkgconfig" >> "$GITHUB_ENV"
+          fi
 
       - name: Build (make all)
         run: |
           set -euo pipefail
           make all
+
+      - name: Verify build outputs exist
+        run: |
+          set -euo pipefail
+          test -x build/ctmd
+          test -f "build/libsp1verifier.${{ matrix.lib_ext }}"
 
       - name: Check dynamic linking
         run: |
@@ -230,34 +268,36 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    name: GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
+    name: Create GitHub Release
     needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-      actions: read
 
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@v4
         with:
           path: release
           merge-multiple: true
 
-      - name: Publish release assets
+      - name: Create or update release v* and upload assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+
           tag="${GITHUB_REF#refs/tags/}"
 
+          # If release exists, just update assets; otherwise create a new one.
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release exists: $tag"
+            echo "Release $tag already exists, uploading assets..."
+            gh release upload "$tag" release/* --clobber
           else
+            echo "Creating release $tag and uploading assets..."
             gh release create "$tag" \
               --title "$tag" \
-              --notes "Automated build artifacts for $tag."
+              --generate-notes \
+              release/*
           fi
-
-          gh release upload "$tag" release/* --clobber
