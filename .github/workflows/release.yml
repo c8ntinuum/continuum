@@ -1,0 +1,263 @@
+name: Release binaries
+
+run-name: Build ${{ github.ref_name }} • ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# Start from zero permissions; grant only what each job needs.
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runs-on: ubuntu-24.04
+          - os: linux
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+          - os: macos
+            arch: arm64
+            runs-on: macos-14
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    env:
+      CTM_BINARY: ctmd
+      CARGO_TERM_COLOR: always
+      GO111MODULE: on
+      ROCKSDB_VERSION: "10.2.1"
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set version + artifact name
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            version="${GITHUB_REF#refs/tags/}"
+            version="${version#v}"
+          else
+            version="${GITHUB_SHA:0:7}"
+          fi
+
+          printf "VERSION=%s\n" "$version" >> "$GITHUB_ENV"
+          printf "DIST_BASENAME=ctmd_%s_%s_%s\n" "$version" "${{ matrix.os }}" "${{ matrix.arch }}" >> "$GITHUB_ENV"
+
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          check-latest: true
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e
+        with:
+          toolchain: stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            patchelf \
+            curl \
+            ca-certificates \
+            libsnappy-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            liblz4-dev \
+            libzstd-dev \
+            libgflags-dev \
+            liburing-dev
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Build RocksDB v${{ env.ROCKSDB_VERSION }} from source (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+
+          PREFIX="${RUNNER_TEMP}/rocksdb-${ROCKSDB_VERSION}"
+          SRC="${RUNNER_TEMP}/rocksdb-src-${ROCKSDB_VERSION}"
+
+          mkdir -p "${SRC}" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig"
+
+          curl -fsSL "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
+          topdir="$(tar -tzf "${SRC}/rocksdb.tar.gz" | head -1 | cut -d/ -f1)"
+          tar -xzf "${SRC}/rocksdb.tar.gz" -C "${SRC}"
+          cd "${SRC}/${topdir}"
+
+          # Release-mode libs; PORTABLE=1 disables -march=native for broader compatibility.
+          export PORTABLE=1
+          make -j"$(nproc)" shared_lib static_lib
+
+          # Generate a pkg-config file (rocksdb.pc) so CGO deps using pkg-config can find it.
+          make gen-pc PREFIX="${PREFIX}" LIBDIR="${PREFIX}/lib"
+
+          cp -R include/rocksdb "${PREFIX}/include/"
+          cp -a librocksdb.so* librocksdb.a "${PREFIX}/lib/"
+          cp rocksdb.pc "${PREFIX}/lib/pkgconfig/rocksdb.pc"
+
+          # Expose to subsequent steps (Makefile will also pick up ROCKSDB_PREFIX if needed).
+          echo "ROCKSDB_PREFIX=${PREFIX}" >> "$GITHUB_ENV"
+          if [ -n "${PKG_CONFIG_PATH:-}" ]; then
+            echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          else
+            echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig" >> "$GITHUB_ENV"
+          fi
+
+          # Test that pkg-config resolves rocksdb.
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+          pkg-config --exists rocksdb
+          pkg-config --cflags --libs rocksdb
+
+      - name: Install build deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew install rocksdb zstd snappy lz4 bzip2 zlib
+
+      - name: Build (make all)
+        run: |
+          set -euo pipefail
+          make all
+
+      - name: Check dynamic linking
+        run: |
+          set -euo pipefail
+          ls -lah build
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            ldd ./build/ctmd | grep -i sp1verifier || true
+          elif [[ "${RUNNER_OS}" == "macOS" ]]; then
+            otool -L ./build/ctmd | grep -i sp1verifier || true
+          fi
+
+      - name: Package tar.gz + SHA256
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          artifact="${DIST_BASENAME}.tar.gz"
+
+          lib_file="$(ls build/libsp1verifier.* | head -n 1 || true)"
+          if [[ -z "${lib_file}" ]]; then
+            echo "❌ libsp1verifier not found in build/"
+            exit 1
+          fi
+
+          # Avoid AppleDouble “._” files in archives on macOS
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            export COPYFILE_DISABLE=1
+          fi
+
+          tar -C build -czf "dist/${artifact}" ctmd "$(basename "${lib_file}")"
+
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "dist/${artifact}" > "dist/${artifact}.sha256"
+          else
+            shasum -a 256 "dist/${artifact}" > "dist/${artifact}.sha256"
+          fi
+
+          echo "artifact=dist/${artifact}" >> "$GITHUB_OUTPUT"
+          echo "checksum=dist/${artifact}.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance (tarball)
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: ${{ github.workspace }}/${{ steps.package.outputs.artifact }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ${{ env.DIST_BASENAME }}
+          path: |
+            ${{ steps.package.outputs.artifact }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write job summary
+        run: |
+          set -euo pipefail
+          {
+            echo "### 📦 ${DIST_BASENAME}"
+            echo
+            echo "- Artifact: \`${DIST_BASENAME}.tar.gz\`"
+            echo "- SHA-256: \`$(cat "${{ steps.package.outputs.checksum }}")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release exists: $tag"
+          else
+            gh release create "$tag" \
+              --title "$tag" \
+              --notes "Automated build artifacts for $tag."
+          fi
+
+          gh release upload "$tag" release/* --clobber
