@@ -1,0 +1,31 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "xOnlyPubKey",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "messageHash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "verifySchnorrSignature",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+    }
+]

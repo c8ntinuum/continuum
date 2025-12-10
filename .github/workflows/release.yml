@@ -1,0 +1,361 @@
+name: Release binaries
+
+run-name: Build ${{ github.ref_name }} • ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "release/*"
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  meta:
+    name: Compute version metadata
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      is_tag_ref: ${{ steps.meta.outputs.is_tag_ref }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - name: Checkout (full history for git describe)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Compute version/tag
+        id: meta
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            version="${tag#v}"
+            is_tag_ref=true
+            prerelease=false
+          else
+            version="$(git describe --tags --always | sed 's/^v//')"
+            tag="v${version}"
+            is_tag_ref=false
+            prerelease=true
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "is_tag_ref=${is_tag_ref}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    needs: meta
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runs-on: ubuntu-22.04
+            os: linux
+            arch: amd64
+            lib_ext: so
+          - runs-on: ubuntu-22.04-arm
+            os: linux
+            arch: arm64
+            lib_ext: so
+          - runs-on: macos-14
+            os: darwin
+            arch: arm64
+            lib_ext: dylib
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      ASSET_BASENAME: ctmd-${{ needs.meta.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+
+      # Makefile knobs
+      ROCKSDB_ENABLED: "true"
+      ROCKSDB_REQUIRED: "true"
+      LEDGER_ENABLED: "true"
+
+      CARGO_TERM_COLOR: always
+      GO111MODULE: on
+
+      # Linux-only: built from source
+      ROCKSDB_VERSION: "10.2.1"
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@df199fb7be9f65074067a9eb93f12bb4c5547cf2 # v2.13.3
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          check-latest: true
+          cache-dependency-path: |
+            **/go.sum
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e
+        with:
+          toolchain: stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            patchelf \
+            curl \
+            ca-certificates \
+            libsnappy-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            liblz4-dev \
+            libzstd-dev \
+            libgflags-dev \
+            libnuma-dev
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+      - name: Cache RocksDB (Linux)
+        if: matrix.os == 'linux'
+        id: cache-rocksdb
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/rocksdb-${{ env.ROCKSDB_VERSION }}
+          key: rocksdb-${{ matrix.os }}-${{ matrix.arch }}-${{ env.ROCKSDB_VERSION }}
+
+      - name: Set RocksDB env from cache (Linux)
+        if: matrix.os == 'linux' && steps.cache-rocksdb.outputs.cache-hit == 'true'
+        run: |
+          set -euo pipefail
+          PREFIX="${RUNNER_TEMP}/rocksdb-${ROCKSDB_VERSION}"
+          echo "ROCKSDB_PREFIX=${PREFIX}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> "$GITHUB_ENV"
+
+      - name: Build RocksDB v${{ env.ROCKSDB_VERSION }} from source on Linux
+        if: matrix.os == 'linux' && steps.cache-rocksdb.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+
+          PREFIX="${RUNNER_TEMP}/rocksdb-${ROCKSDB_VERSION}"
+          SRC="${RUNNER_TEMP}/rocksdb-src-${ROCKSDB_VERSION}"
+
+          mkdir -p "${SRC}" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig"
+
+          curl -fsSL "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
+          work="${SRC}/rocksdb"
+          mkdir -p "${work}"
+          tar -xzf "${SRC}/rocksdb.tar.gz" -C "${work}" --strip-components=1
+          cd "${work}"
+          export PORTABLE=1
+
+          make -j"$(nproc)" shared_lib
+          make gen-pc PREFIX="${PREFIX}" LIBDIR="${PREFIX}/lib"
+
+          strip --strip-unneeded librocksdb.so* libgflags.so* libnuma.so* libsnappy.so*  \
+                                liblz4.so* libzstd.so* libbz2.so* libz.so* || true
+
+          cp -R include/rocksdb "${PREFIX}/include/"
+          cp -a librocksdb.so* "${PREFIX}/lib/"
+          cp rocksdb.pc "${PREFIX}/lib/pkgconfig/rocksdb.pc"
+
+          # Export for Makefile detection and bundling script resolution
+          echo "ROCKSDB_PREFIX=${PREFIX}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> "$GITHUB_ENV"
+
+      - name: Verify RocksDB links compression libs (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          so="${ROCKSDB_PREFIX}/lib/librocksdb.so"
+          test -f "$so"
+          ldd "$so"
+          ldd "$so" | grep -qi snappy
+          ldd "$so" | grep -qi zstd
+          ldd "$so" | grep -qi lz4
+          ldd "$so" | grep -qi bz2
+          ldd "$so" | grep -qi 'libz\.so'
+
+      - name: Install RocksDB (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew update
+          brew install rocksdb
+
+          ROCKSDB_PREFIX="$(brew --prefix rocksdb)"
+          echo "ROCKSDB_PREFIX=${ROCKSDB_PREFIX}" >> "$GITHUB_ENV"
+          if [[ -d "${ROCKSDB_PREFIX}/lib/pkgconfig" ]]; then
+            echo "PKG_CONFIG_PATH=${ROCKSDB_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build (make dist)
+        run: |
+          set -euo pipefail
+          make dist
+
+      - name: Verify dist outputs exist
+        run: |
+          set -euo pipefail
+          test -x build/dist/bin/ctmd
+          test -d build/dist/lib
+          test -f "build/dist/lib/libsp1verifier.${{ matrix.lib_ext }}"
+          ls -lah build/dist/bin build/dist/lib
+          ls -1 build/dist/lib/librocksdb* >/dev/null
+
+      - name: Package dist tarball
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+      
+          artifact="${ASSET_BASENAME}.tar.gz"
+          bundle_dir="${ASSET_BASENAME}"
+      
+          # Avoid AppleDouble “._” files in archives on macOS
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            export COPYFILE_DISABLE=1
+          fi
+
+          rm -rf "dist/${bundle_dir}"
+          mkdir -p "dist/${bundle_dir}"
+          cp -a build/dist/bin "dist/${bundle_dir}/"
+          cp -a build/dist/lib "dist/${bundle_dir}/"
+      
+          # Create the archive containing the top-level folder
+          tar -C dist -czf "dist/${artifact}" "${bundle_dir}"
+      
+          # Cleanup staging folder (optional)
+          rm -rf "dist/${bundle_dir}"
+      
+          echo "tarball=dist/${artifact}" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance (tarball)
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: ${{ github.workspace }}/${{ steps.package.outputs.tarball }}
+
+      - name: Upload artifacts (tarball + checksums)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ${{ env.ASSET_BASENAME }}
+          path: |
+            ${{ steps.package.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write job summary
+        run: |
+          set -euo pipefail
+          {
+            echo "### 📦 ${ASSET_BASENAME}"
+            echo
+            echo "- Asset: \`$(basename "${{ steps.package.outputs.tarball }}")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Create/Update GitHub Release
+    needs: [meta, build]
+    if: needs.meta.outputs.is_tag_ref == 'true'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          path: release
+          pattern: ctmd-*
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS for release tarballs
+        run: |
+          set -euo pipefail
+          cd release
+
+          checksums="ctmd-${{ needs.meta.outputs.version }}-SHA256SUMS.sha256"
+
+          ls -1 *.tar.gz >/dev/null
+
+          sha256sum *.tar.gz | LC_ALL=C sort -k2 > "$checksums"
+
+          echo "Wrote $checksums"
+          cat "$checksums"
+
+      - name: Create or update release and upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          IS_TAG_REF: ${{ needs.meta.outputs.is_tag_ref }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' -t assets < <(
+            find release -maxdepth 1 -type f \( \
+              -name '*.tar.gz' -o \
+              -name 'ctmd-*-SHA256SUMS.sha256' \
+            \) -print0
+          )
+
+          if [[ "${#assets[@]}" -eq 0 ]]; then
+            echo "No assets found under ./release"
+            exit 1
+          fi
+
+          if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Release ${TAG} exists — uploading assets..."
+            gh release upload "$TAG" --repo "$GH_REPO" "${assets[@]}" --clobber
+            exit 0
+          fi
+
+          args=(--title "$TAG" --generate-notes)
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease --latest=false)
+          fi
+
+          gh release create "$TAG" --repo "$GH_REPO" "${args[@]}" "${assets[@]}"

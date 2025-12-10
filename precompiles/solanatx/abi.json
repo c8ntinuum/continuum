@@ -1,0 +1,183 @@
+[
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "priorityLevel",
+                "type": "string"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "programKey",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "signer",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "methodParams",
+                "type": "bytes"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "pubKey",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isSigner",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isWritable",
+                        "type": "bool"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct SolanaTxI.AccountMeta[]",
+                "name": "accounts",
+                "type": "tuple[]"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "latestBlockHash",
+                "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "txToSignBytes",
+                "type": "bytes"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "txId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "SolanaTxGenerated",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "priorityLevel",
+                "type": "string"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "programKey",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "signer",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "methodParams",
+                "type": "bytes"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "pubKey",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isSigner",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "isWritable",
+                        "type": "bool"
+                    }
+                ],
+                "internalType": "struct SolanaTxI.AccountMeta[]",
+                "name": "accounts",
+                "type": "tuple[]"
+            },
+            {
+                "internalType": "string",
+                "name": "latestBlockHash",
+                "type": "string"
+            }
+        ],
+        "name": "generateSolanaTx",
+        "outputs": [
+            {
+                "internalType": "bytes",
+                "name": "txToSignBytes",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "txId",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "txId",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getSolanaTx",
+        "outputs": [
+            {
+                "internalType": "bytes",
+                "name": "txToSignBytes",
+                "type": "bytes"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "skip",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "limit",
+                "type": "uint256"
+            }
+        ],
+        "name": "getSolanaTxs",
+        "outputs": [
+            {
+                "internalType": "bytes[]",
+                "name": "txs",
+                "type": "bytes[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]

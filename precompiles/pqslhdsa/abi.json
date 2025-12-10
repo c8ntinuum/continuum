@@ -1,0 +1,36 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "uint8",
+                "name": "paramId",
+                "type": "uint8"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "msgHash",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "pubkey",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+            }
+        ],
+        "name": "verify",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]

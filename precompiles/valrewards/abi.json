@@ -1,0 +1,164 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "delegatorAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "uint32",
+                "name": "maxRetrieve",
+                "type": "uint32"
+            },
+            {
+                "internalType": "uint64",
+                "name": "epoch",
+                "type": "uint64"
+            }
+        ],
+        "name": "claimRewards",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "delegatorAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "uint64",
+                "name": "epoch",
+                "type": "uint64"
+            }
+        ],
+        "name": "delegationRewards",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "denom",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Coin",
+                "name": "rewards",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "depositor",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "denom",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Coin",
+                "name": "amount",
+                "type": "tuple"
+            }
+        ],
+        "name": "depositValidatorRewardsPool",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "rewardsPool",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "denom",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Coin",
+                "name": "rewards",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint64",
+                "name": "epoch",
+                "type": "uint64"
+            },
+            {
+                "internalType": "string",
+                "name": "validatorAddress",
+                "type": "string"
+            }
+        ],
+        "name": "validatorOutstandingRewards",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "denom",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct Coin",
+                "name": "rewards",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
