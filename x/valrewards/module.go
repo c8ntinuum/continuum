@@ -47,7 +47,7 @@ func (AppModuleBasic) ConsensusVersion() uint64 {
 func (AppModuleBasic) RegisterInterfaces(_ codectypes.InterfaceRegistry) {}
 
 func (AppModuleBasic) DefaultGenesis(_ codec.JSONCodec) json.RawMessage {
-	return json.RawMessage{}
+	return nil
 }
 
 func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, _ client.TxEncodingConfig, _ json.RawMessage) error {
@@ -90,7 +90,7 @@ func (am AppModule) InitGenesis(ctx sdk.Context, _ codec.JSONCodec, _ json.RawMe
 }
 
 func (AppModule) ExportGenesis(_ sdk.Context, _ codec.JSONCodec) json.RawMessage {
-	return json.RawMessage{}
+	return nil
 }
 
 func (AppModule) GenerateGenesisState(_ *module.SimulationState) {}
