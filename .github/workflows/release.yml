@@ -25,6 +25,7 @@ jobs:
   meta:
     name: Compute version metadata
     runs-on: ubuntu-22.04
+    timeout-minutes: 5
     permissions:
       contents: read
     outputs:
@@ -38,7 +39,6 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-          submodules: recursive
           fetch-depth: 0
 
       - name: Compute version/tag
@@ -114,7 +114,6 @@ jobs:
       GOFLAGS: "-mod=vendor"
 
       CARGO_TERM_COLOR: always
-      GO111MODULE: on
 
       # RocksDB: built from source on all platforms
       ROCKSDB_VERSION: "10.2.1"
@@ -143,7 +142,7 @@ jobs:
             **/go.sum
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e
+        uses: dtolnay/rust-toolchain@0b1efabc08b657293548b77fb76cc02d26091c7e # master (no semver releases)
         with:
           toolchain: ${{ env.RUSTUP_TOOLCHAIN }}
 
@@ -177,7 +176,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/rocksdb-${{ env.ROCKSDB_VERSION }}
-          key: rocksdb-${{ matrix.os }}-${{ matrix.arch }}-${{ env.ROCKSDB_VERSION }}
+          key: rocksdb-linux-${{ matrix.arch }}-${{ env.ROCKSDB_VERSION }}-v1
 
       - name: Set RocksDB env from cache (Linux)
         if: matrix.os == 'linux' && steps.cache-rocksdb.outputs.cache-hit == 'true'
@@ -198,7 +197,7 @@ jobs:
 
           mkdir -p "${SRC}" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig"
 
-          curl -fsSL "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
+          curl -fsSL --max-redirs 3 "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
           echo "${ROCKSDB_SHA256}  ${SRC}/rocksdb.tar.gz" | sha256sum -c -
           work="${SRC}/rocksdb"
           mkdir -p "${work}"
@@ -209,8 +208,15 @@ jobs:
           make -j"$(nproc)" shared_lib
           make gen-pc PREFIX="${PREFIX}" LIBDIR="${PREFIX}/lib"
 
-          strip --strip-unneeded librocksdb.so* libgflags.so* libnuma.so* libsnappy.so* \
-                                liblz4.so* libzstd.so* libbz2.so* libz.so* || true
+          # Strip the primary library — must succeed
+          strip --strip-unneeded librocksdb.so*
+
+          # Strip optional bundled libs — ignore if absent
+          for lib in libgflags.so* libnuma.so* libsnappy.so* liblz4.so* libzstd.so* libbz2.so* libz.so*; do
+            if compgen -G "$lib" > /dev/null; then
+              strip --strip-unneeded $lib
+            fi
+          done
 
           cp -R include/rocksdb "${PREFIX}/include/"
           cp -a librocksdb.so* "${PREFIX}/lib/"
@@ -237,6 +243,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: |
           set -euo pipefail
           brew install snappy zstd lz4 bzip2 zlib gflags
@@ -247,7 +254,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/rocksdb-${{ env.ROCKSDB_VERSION }}
-          key: rocksdb-${{ matrix.os }}-${{ matrix.arch }}-${{ env.ROCKSDB_VERSION }}
+          key: rocksdb-darwin-${{ matrix.arch }}-${{ env.ROCKSDB_VERSION }}-v1
 
       - name: Set RocksDB env from cache (macOS)
         if: runner.os == 'macOS' && steps.cache-rocksdb-macos.outputs.cache-hit == 'true'
@@ -266,7 +273,7 @@ jobs:
 
           mkdir -p "${SRC}" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig"
 
-          curl -fsSL "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
+          curl -fsSL --max-redirs 3 "https://github.com/facebook/rocksdb/archive/v${ROCKSDB_VERSION}.tar.gz" -o "${SRC}/rocksdb.tar.gz"
           echo "${ROCKSDB_SHA256}  ${SRC}/rocksdb.tar.gz" | shasum -a 256 -c -
 
           work="${SRC}/rocksdb"
@@ -280,6 +287,7 @@ jobs:
 
           cp -R include/rocksdb "${PREFIX}/include/"
           cp -a librocksdb*.dylib "${PREFIX}/lib/"
+          cp rocksdb.pc "${PREFIX}/lib/pkgconfig/rocksdb.pc"
 
           echo "ROCKSDB_PREFIX=${PREFIX}" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}" >> "$GITHUB_ENV"
@@ -289,6 +297,11 @@ jobs:
         run: |
           set -euo pipefail
           dylib=$(find "${ROCKSDB_PREFIX}/lib" -name 'librocksdb*.dylib' -not -name '*.*.*' | head -1)
+          if [[ -z "${dylib}" ]]; then
+            echo "::error::No librocksdb dylib found in ${ROCKSDB_PREFIX}/lib"
+            ls -la "${ROCKSDB_PREFIX}/lib/"
+            exit 1
+          fi
           test -f "$dylib"
           otool -L "$dylib"
 
@@ -296,6 +309,22 @@ jobs:
         run: |
           set -euo pipefail
           make vendor
+
+      - name: Verify module integrity
+        run: |
+          set -euo pipefail
+          go mod verify
+
+      - name: Patch zondax/hid C sources into vendor (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          MOD_PATH="$(go env GOMODCACHE)/github.com/zondax/hid@v0.9.2"
+          if [[ ! -d "${MOD_PATH}" ]]; then
+            go mod download github.com/zondax/hid@v0.9.2
+          fi
+          DST="vendor/github.com/zondax/hid"
+          cp -r "${MOD_PATH}/libusb" "${DST}/"
 
       - name: Build (make dist)
         run: |
@@ -346,7 +375,8 @@ jobs:
             ${{ steps.package.outputs.tarball }}
             ${{ env.ASSET_BASENAME }}-toolchain.json
           if-no-files-found: error
-          retention-days: 30
+          # Shorter retention for branch builds (testing only); full retention for tags
+          retention-days: ${{ needs.meta.outputs.is_tag_ref == 'true' && 30 || 7 }}
 
       - name: Write job summary
         run: |
@@ -392,7 +422,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Download matching release tarball
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
@@ -455,13 +485,14 @@ jobs:
           name: digests-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30  # match build artifact retention
 
   merge-image:
     name: Merge multi-platform image
     needs: [meta, image]
     if: needs.meta.outputs.is_tag_ref == 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write
@@ -533,18 +564,28 @@ jobs:
       - name: Smoke test Docker image
         run: |
           set -euo pipefail
-          docker run --rm "${REGISTRY_IMAGE}:${VERSION}" version
-          echo "Docker smoke test passed"
+          # Pull by digest rather than mutable tag to verify exactly what was pushed
+          manifest_digest=$(docker buildx imagetools inspect \
+            "${REGISTRY_IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
+          docker run --rm "${REGISTRY_IMAGE}@${manifest_digest}" version
+          echo "Docker smoke test passed (digest: ${manifest_digest})"
 
   release:
     name: Create/Update GitHub Release
     needs: [meta, build, merge-image]
     if: needs.meta.outputs.is_tag_ref == 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     permissions:
       contents: write
 
     steps:
+      - name: Checkout (for release note generation)
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
       - name: Download all build artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
