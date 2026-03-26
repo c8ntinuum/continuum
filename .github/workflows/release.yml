@@ -315,8 +315,7 @@ jobs:
           set -euo pipefail
           go mod verify
 
-      - name: Patch zondax/hid C sources into vendor (Linux)
-        if: matrix.os == 'linux'
+      - name: Patch zondax/hid C sources into vendor
         run: |
           set -euo pipefail
           MOD_PATH="$(go env GOMODCACHE)/github.com/zondax/hid@v0.9.2"
@@ -324,7 +323,13 @@ jobs:
             go mod download github.com/zondax/hid@v0.9.2
           fi
           DST="vendor/github.com/zondax/hid"
-          cp -r "${MOD_PATH}/libusb" "${DST}/"
+          # go mod vendor omits C source trees; recreate the directory and copy them in
+          mkdir -p "${DST}"
+          if [[ "${{ matrix.os }}" == "linux" ]]; then
+            cp -r "${MOD_PATH}/libusb" "${DST}/"
+          elif [[ "${{ matrix.os }}" == "darwin" ]]; then
+            cp -r "${MOD_PATH}/hidapi" "${DST}/"
+          fi
 
       - name: Build (make dist)
         run: |
