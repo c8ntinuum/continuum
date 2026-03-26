@@ -1,0 +1,12 @@
+syntax = "proto3";
+package cosmos.evm.ibcratelimiterext.v1;
+
+import "amino/amino.proto";
+import "cosmos/evm/ibcratelimiterext/v1/ibcratelimiterext.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcratelimiterext/types";
+
+message GenesisState {
+  Params params = 1 [(gogoproto.nullable) = false, (amino.dont_omitempty) = true];
+}

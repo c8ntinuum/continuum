@@ -1,0 +1,18 @@
+syntax = "proto3";
+package cosmos.evm.ibcbreaker.v1;
+
+import "amino/amino.proto";
+import "cosmos/evm/ibcbreaker/v1/ibcbreaker.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcbreaker/types";
+
+// GenesisState defines the ibcbreaker module's genesis state.
+message GenesisState {
+  // params defines the ibcbreaker module parameters.
+  Params params = 1
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+  // state defines the ibcbreaker module state.
+  IbcBreakerState state = 2
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+}

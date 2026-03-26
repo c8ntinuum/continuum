@@ -1,0 +1,12 @@
+syntax = "proto3";
+package cosmos.evm.ibcratelimiterext.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcratelimiterext/types";
+
+// Params defines the ibcratelimiterext module parameters.
+message Params {
+  // whitelist are the addresses allowed to operate ratelimiting Msg methods.
+  repeated string whitelist = 1;
+}

@@ -1,0 +1,44 @@
+syntax = "proto3";
+package cosmos.evm.valrewards.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/valrewards/types";
+
+service Query {
+  rpc DelegationRewards(QueryDelegationRewardsRequest) returns (QueryDelegationRewardsResponse);
+
+  rpc ValidatorOutstandingRewards(QueryValidatorOutstandingRewardsRequest)
+      returns (QueryValidatorOutstandingRewardsResponse);
+
+  rpc RewardsPool(QueryRewardsPoolRequest) returns (QueryRewardsPoolResponse);
+}
+
+message QueryDelegationRewardsRequest {
+  string delegator = 1;
+  uint64 epoch = 2;
+}
+
+message QueryDelegationRewardsResponse {
+  cosmos.base.v1beta1.Coin rewards = 1
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+}
+
+message QueryValidatorOutstandingRewardsRequest {
+  uint64 epoch = 1;
+  string validator_address = 2;
+}
+
+message QueryValidatorOutstandingRewardsResponse {
+  cosmos.base.v1beta1.Coin rewards = 1
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+}
+
+message QueryRewardsPoolRequest {}
+
+message QueryRewardsPoolResponse {
+  cosmos.base.v1beta1.Coin pool = 1
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+}

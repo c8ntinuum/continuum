@@ -1,0 +1,18 @@
+syntax = "proto3";
+package cosmos.evm.ibcbreaker.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcbreaker/types";
+
+// IbcBreakerState defines the module state stored in the KVStore.
+message IbcBreakerState {
+  // ibc_available controls whether IBC is available.
+  bool ibc_available = 1;
+}
+
+// Params defines the ibcbreaker module parameters.
+message Params {
+  // whitelist are the addresses allowed to update ibcbreaker state.
+  repeated string whitelist = 1;
+}

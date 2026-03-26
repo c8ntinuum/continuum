@@ -1,0 +1,57 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "SP1VerifierPlonkI",
+  "sourceName": "solidity/precompiles/sp1verifierplonk/SP1VerifierPlonkI.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "VERIFIER_HASH",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "VERSION",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "programVKey",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "publicValues",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "proofBytes",
+          "type": "bytes"
+        }
+      ],
+      "name": "verifyProof",
+      "outputs": [],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x"
+}

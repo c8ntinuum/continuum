@@ -1,0 +1,32 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Sha3HashI",
+  "sourceName": "solidity/precompiles/sha3hash/Sha3HashI.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        },
+        {
+          "internalType": "string",
+          "name": "hashName",
+          "type": "string"
+        }
+      ],
+      "name": "sha3Hash",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "digest",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x"
+}

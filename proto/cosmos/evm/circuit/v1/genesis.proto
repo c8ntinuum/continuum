@@ -1,0 +1,18 @@
+syntax = "proto3";
+package cosmos.evm.circuit.v1;
+
+import "amino/amino.proto";
+import "cosmos/evm/circuit/v1/circuit.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/circuit/types";
+
+// GenesisState defines the circuit module's genesis state.
+message GenesisState {
+  // params defines the circuit module parameters.
+  Params params = 1
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+  // state defines the circuit module state.
+  CircuitState state = 2
+      [ (gogoproto.nullable) = false, (amino.dont_omitempty) = true ];
+}

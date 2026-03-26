@@ -1,0 +1,49 @@
+syntax = "proto3";
+package cosmos.evm.circuit.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "cosmos/evm/circuit/v1/circuit.proto";
+
+option go_package = "github.com/cosmos/evm/x/circuit/types";
+
+// Msg defines the circuit Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateCircuit updates the system availability flag.
+  rpc UpdateCircuit(MsgUpdateCircuit) returns (MsgUpdateCircuitResponse);
+
+  // UpdateParams updates the circuit module params.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+}
+
+// MsgUpdateCircuit defines a Msg for updating the circuit state.
+message MsgUpdateCircuit {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "cosmos/evm/x/circuit/MsgUpdateCircuit";
+
+  // signer is the address authorized to update circuit state.
+  string signer = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  // system_available is the desired system availability flag.
+  bool system_available = 2;
+}
+
+// MsgUpdateCircuitResponse defines the response structure for executing a MsgUpdateCircuit message.
+message MsgUpdateCircuitResponse {}
+
+// MsgUpdateParams defines a Msg for updating the circuit params.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "cosmos/evm/x/circuit/MsgUpdateParams";
+
+  // authority is the address of the governance account.
+  string authority = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  // params defines the circuit parameters to update.
+  // NOTE: All parameters must be supplied.
+  Params params = 2;
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a MsgUpdateParams message.
+message MsgUpdateParamsResponse {}

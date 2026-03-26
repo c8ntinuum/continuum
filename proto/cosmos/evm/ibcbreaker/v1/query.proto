@@ -1,0 +1,39 @@
+syntax = "proto3";
+package cosmos.evm.ibcbreaker.v1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcbreaker/types";
+option (gogoproto.goproto_getters_all) = false;
+
+// Query defines the gRPC querier service for ibcbreaker module.
+service Query {
+  // IbcAvailable returns the current IBC availability flag.
+  rpc IbcAvailable(QueryIbcAvailableRequest) returns (QueryIbcAvailableResponse) {
+    option (google.api.http).get = "/cosmos/evm/ibcbreaker/v1/ibc_available";
+  }
+
+  // Whitelist returns the list of authorized addresses.
+  rpc Whitelist(QueryWhitelistRequest) returns (QueryWhitelistResponse) {
+    option (google.api.http).get = "/cosmos/evm/ibcbreaker/v1/whitelist";
+  }
+}
+
+// QueryIbcAvailableRequest defines the request type for Query/IbcAvailable.
+message QueryIbcAvailableRequest {}
+
+// QueryIbcAvailableResponse defines the response type for Query/IbcAvailable.
+message QueryIbcAvailableResponse {
+  // ibc_available is the current IBC availability flag.
+  bool ibc_available = 1;
+}
+
+// QueryWhitelistRequest defines the request type for Query/Whitelist.
+message QueryWhitelistRequest {}
+
+// QueryWhitelistResponse defines the response type for Query/Whitelist.
+message QueryWhitelistResponse {
+  // whitelist is the list of authorized addresses.
+  repeated string whitelist = 1;
+}

@@ -1,0 +1,38 @@
+syntax = "proto3";
+package cosmos.evm.valrewards.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+
+option go_package = "github.com/cosmos/evm/x/valrewards/types";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc ClaimRewards(MsgClaimRewards) returns (MsgClaimRewardsResponse);
+
+  rpc DepositRewardsPool(MsgDepositRewardsPool) returns (MsgDepositRewardsPoolResponse);
+}
+
+message MsgClaimRewards {
+  option (cosmos.msg.v1.signer) = "delegator";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgClaimRewards";
+
+  string delegator = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  uint32 max_retrieve = 2;
+  uint64 epoch = 3;
+}
+
+message MsgClaimRewardsResponse {}
+
+message MsgDepositRewardsPool {
+  option (cosmos.msg.v1.signer) = "depositor";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgDepositRewardsPool";
+
+  string depositor = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  cosmos.base.v1beta1.Coin amount = 2 [ (amino.dont_omitempty) = true ];
+}
+
+message MsgDepositRewardsPoolResponse {}

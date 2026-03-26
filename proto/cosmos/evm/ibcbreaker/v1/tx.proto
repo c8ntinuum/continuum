@@ -1,0 +1,49 @@
+syntax = "proto3";
+package cosmos.evm.ibcbreaker.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "cosmos/evm/ibcbreaker/v1/ibcbreaker.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcbreaker/types";
+
+// Msg defines the ibcbreaker Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // UpdateIbcBreaker updates the IBC availability flag.
+  rpc UpdateIbcBreaker(MsgUpdateIbcBreaker) returns (MsgUpdateIbcBreakerResponse);
+
+  // UpdateParams updates the ibcbreaker module params.
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+}
+
+// MsgUpdateIbcBreaker defines a Msg for updating the ibcbreaker state.
+message MsgUpdateIbcBreaker {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "cosmos/evm/x/ibcbreaker/MsgUpdateIbcBreaker";
+
+  // signer is the address authorized to update ibcbreaker state.
+  string signer = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  // ibc_available is the desired IBC availability flag.
+  bool ibc_available = 2;
+}
+
+// MsgUpdateIbcBreakerResponse defines the response structure for executing a MsgUpdateIbcBreaker message.
+message MsgUpdateIbcBreakerResponse {}
+
+// MsgUpdateParams defines a Msg for updating the ibcbreaker params.
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "cosmos/evm/x/ibcbreaker/MsgUpdateParams";
+
+  // authority is the address of the governance account.
+  string authority = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  // params defines the ibcbreaker parameters to update.
+  // NOTE: All parameters must be supplied.
+  Params params = 2;
+}
+
+// MsgUpdateParamsResponse defines the response structure for executing a MsgUpdateParams message.
+message MsgUpdateParamsResponse {}
