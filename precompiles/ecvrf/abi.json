@@ -1,0 +1,47 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ECVRFI",
+  "sourceName": "solidity/precompiles/ecvrf/ECVRFI.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "suite",
+          "type": "string"
+        },
+        {
+          "internalType": "bytes",
+          "name": "pubKey",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "alpha",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "pi",
+          "type": "bytes"
+        }
+      ],
+      "name": "ecvrfVerify",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "ok",
+          "type": "bool"
+        },
+        {
+          "internalType": "bytes",
+          "name": "beta",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x"
+}

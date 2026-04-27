@@ -1,0 +1,25 @@
+syntax = "proto3";
+package cosmos.evm.ibcratelimiterext.v1;
+
+import "amino/amino.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "cosmos/evm/ibcratelimiterext/v1/ibcratelimiterext.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcratelimiterext/types";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+}
+
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "cosmos/evm/x/ibcratelimiterext/MsgUpdateParams";
+
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  Params params = 2;
+}
+
+message MsgUpdateParamsResponse {}

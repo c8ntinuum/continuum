@@ -1,0 +1,28 @@
+syntax = "proto3";
+package cosmos.evm.valrewards.v1;
+
+option go_package = "github.com/cosmos/evm/x/valrewards/types";
+
+// Params defines the valrewards module parameters.
+message Params {
+  // whitelist are the addresses allowed to stage runtime reward-setting updates.
+  repeated string whitelist = 1;
+}
+
+// RewardSettings defines the reward settings applied by epoch.
+message RewardSettings {
+  // blocks_in_epoch is the number of blocks in an epoch.
+  int64 blocks_in_epoch = 1;
+  // rewards_per_epoch is the total reward amount distributed for an epoch, in decimal string form.
+  string rewards_per_epoch = 2;
+  // rewarding_paused disables point accumulation and reward row creation for the epoch when true.
+  bool rewarding_paused = 3;
+}
+
+// EpochState defines the explicit epoch-tracking state stored by the module.
+message EpochState {
+  // current_epoch is the epoch currently collecting points.
+  uint64 current_epoch = 1;
+  // blocks_into_current_epoch is the number of committed blocks already counted in current_epoch.
+  int64 blocks_into_current_epoch = 2;
+}

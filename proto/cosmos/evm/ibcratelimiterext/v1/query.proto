@@ -1,0 +1,20 @@
+syntax = "proto3";
+package cosmos.evm.ibcratelimiterext.v1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/cosmos/evm/x/ibcratelimiterext/types";
+option (gogoproto.goproto_getters_all) = false;
+
+service Query {
+  rpc Whitelist(QueryWhitelistRequest) returns (QueryWhitelistResponse) {
+    option (google.api.http).get = "/cosmos/evm/ibcratelimiterext/v1/whitelist";
+  }
+}
+
+message QueryWhitelistRequest {}
+
+message QueryWhitelistResponse {
+  repeated string whitelist = 1;
+}

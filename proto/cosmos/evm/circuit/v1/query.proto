@@ -1,0 +1,39 @@
+syntax = "proto3";
+package cosmos.evm.circuit.v1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/cosmos/evm/x/circuit/types";
+option (gogoproto.goproto_getters_all) = false;
+
+// Query defines the gRPC querier service for circuit module.
+service Query {
+  // SystemAvailable returns the current system availability flag.
+  rpc SystemAvailable(QuerySystemAvailableRequest) returns (QuerySystemAvailableResponse) {
+    option (google.api.http).get = "/cosmos/evm/circuit/v1/system_available";
+  }
+
+  // Whitelist returns the list of authorized addresses.
+  rpc Whitelist(QueryWhitelistRequest) returns (QueryWhitelistResponse) {
+    option (google.api.http).get = "/cosmos/evm/circuit/v1/whitelist";
+  }
+}
+
+// QuerySystemAvailableRequest defines the request type for Query/SystemAvailable.
+message QuerySystemAvailableRequest {}
+
+// QuerySystemAvailableResponse defines the response type for Query/SystemAvailable.
+message QuerySystemAvailableResponse {
+  // system_available is the current system availability flag.
+  bool system_available = 1;
+}
+
+// QueryWhitelistRequest defines the request type for Query/Whitelist.
+message QueryWhitelistRequest {}
+
+// QueryWhitelistResponse defines the response type for Query/Whitelist.
+message QueryWhitelistResponse {
+  // whitelist is the list of authorized addresses.
+  repeated string whitelist = 1;
+}

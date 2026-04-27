@@ -1,0 +1,87 @@
+syntax = "proto3";
+package cosmos.evm.valrewards.v1;
+
+import "amino/amino.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos/evm/valrewards/v1/valrewards.proto";
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+
+option go_package = "github.com/cosmos/evm/x/valrewards/types";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  rpc SetBlocksInEpoch(MsgSetBlocksInEpoch) returns (MsgSetBlocksInEpochResponse);
+
+  rpc SetRewardsPerEpoch(MsgSetRewardsPerEpoch) returns (MsgSetRewardsPerEpochResponse);
+
+  rpc SetRewardingPaused(MsgSetRewardingPaused) returns (MsgSetRewardingPausedResponse);
+
+  rpc ClaimRewards(MsgClaimRewards) returns (MsgClaimRewardsResponse);
+
+  rpc DepositRewardsPool(MsgDepositRewardsPool) returns (MsgDepositRewardsPoolResponse);
+}
+
+message MsgUpdateParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgUpdateParams";
+
+  string authority = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  Params params = 2;
+}
+
+message MsgUpdateParamsResponse {}
+
+message MsgSetBlocksInEpoch {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgSetBlocksInEpoch";
+
+  string signer = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  int64 blocks_in_epoch = 2;
+}
+
+message MsgSetBlocksInEpochResponse {}
+
+message MsgSetRewardsPerEpoch {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgSetRewardsPerEpoch";
+
+  string signer = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  string rewards_per_epoch = 2;
+}
+
+message MsgSetRewardsPerEpochResponse {}
+
+message MsgSetRewardingPaused {
+  option (cosmos.msg.v1.signer) = "signer";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgSetRewardingPaused";
+
+  string signer = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  bool rewarding_paused = 2;
+}
+
+message MsgSetRewardingPausedResponse {}
+
+message MsgClaimRewards {
+  option (cosmos.msg.v1.signer) = "requester";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgClaimRewards";
+
+  string validator_operator = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  uint64 epoch = 2;
+  string requester = 3 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+}
+
+message MsgClaimRewardsResponse {}
+
+message MsgDepositRewardsPool {
+  option (cosmos.msg.v1.signer) = "depositor";
+  option (amino.name) = "cosmos/evm/x/valrewards/MsgDepositRewardsPool";
+
+  string depositor = 1 [ (cosmos_proto.scalar) = "cosmos.AddressString" ];
+  cosmos.base.v1beta1.Coin amount = 2 [ (amino.dont_omitempty) = true ];
+}
+
+message MsgDepositRewardsPoolResponse {}

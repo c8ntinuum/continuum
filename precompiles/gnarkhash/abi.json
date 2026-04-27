@@ -1,0 +1,32 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "GnarkHashI",
+  "sourceName": "solidity/precompiles/gnarkhash/GnarkHashI.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        },
+        {
+          "internalType": "string",
+          "name": "hashName",
+          "type": "string"
+        }
+      ],
+      "name": "gnarkHash",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "digest",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x"
+}

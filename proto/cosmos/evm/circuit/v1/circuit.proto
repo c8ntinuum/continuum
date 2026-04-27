@@ -1,0 +1,18 @@
+syntax = "proto3";
+package cosmos.evm.circuit.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/evm/x/circuit/types";
+
+// CircuitState defines the module state stored in the KVStore.
+message CircuitState {
+  // system_available controls whether the system is available.
+  bool system_available = 1;
+}
+
+// Params defines the circuit module parameters.
+message Params {
+  // whitelist are the addresses allowed to update circuit state.
+  repeated string whitelist = 1;
+}
