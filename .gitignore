@@ -1,32 +1,91 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# ========================
+# OS & Editor
+# ========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.swl
+*.swm
+*.swn
+*~
+.dccache
+
+# ========================
+# IDE
+# ========================
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+.claude/
+
+# ========================
+# Environment
+# ========================
+.env
+.env.*
+
+# ========================
+# Go
+# ========================
+bin/
+vendor/
+coverage.txt
+*.test
+*.out
+*.prof
+*.pprof
+
+# ========================
+# Rust (Cargo)
+# ========================
+/rust/sp1verifier/target/
+/rust/sp1verifier/.cargo/config.toml
+/rust/**/debug/
+**/*.rs.bk
+*.d
+*.rlib
+# Cargo.lock — uncomment if the Rust crate is a library
+# Cargo.lock
+
+# ========================
+# Node.js (tooling / scripts)
+# ========================
+**/node_modules
+yarn.lock
+
+# ========================
+# Solidity / OpenZeppelin
+# ========================
+contracts/@openzeppelin/*
+
+# ========================
+# Build outputs
+# ========================
+build/
+evmd/build/
+dist/
+evmd/evmd
+
+# ========================
+# Test artifacts
+# ========================
+tests/systemtests/binaries
+tests/systemtests/testnet
+.testnets
+
+# ========================
+# Binaries & shared libs
+# ========================
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.pyc
 
-# Test binary, built with `go test -c`
-*.test
-
-# Code coverage profiles and other test artifacts
-*.out
-coverage.*
-*.coverprofile
-profile.cov
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Go workspace file
-go.work
-go.work.sum
-
-# env file
-.env
-
-# Editor/IDE
-# .idea/
-# .vscode/
+# ========================
+# Other
+# ========================
+genesis.json
