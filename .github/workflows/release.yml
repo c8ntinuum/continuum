@@ -345,7 +345,8 @@ jobs:
       - name: Capture toolchain fingerprint
         run: |
           set -euo pipefail
-          make reproducibility-env | sed -n '/^{$/,/^}$/p' > "${ASSET_BASENAME}-toolchain.json"
+          mkdir -p dist
+          make reproducibility-env | sed -n '/^{$/,/^}$/p' > "dist/${ASSET_BASENAME}-toolchain.json"
 
       - name: Attest build provenance (tarball)
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
@@ -357,8 +358,8 @@ jobs:
         with:
           name: ${{ env.ASSET_BASENAME }}
           path: |
-            ${{ steps.package.outputs.tarball }}
-            ${{ env.ASSET_BASENAME }}-toolchain.json
+            dist/${{ env.ASSET_BASENAME }}.tar.gz
+            dist/${{ env.ASSET_BASENAME }}-toolchain.json
           if-no-files-found: error
           retention-days: 30
 
